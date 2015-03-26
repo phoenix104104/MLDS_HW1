@@ -2,12 +2,22 @@ import numpy as np
 import mapping
 import csv
 
-def dnn_load_data(train_filename, label_filename):
+def one_hot(x,n):
+    if type(x) == list:
+        x = np.array(x)
+    x = x.flatten()
+    o_h = np.zeros((len(x),n))
+    o_h[np.arange(len(x)),x] = 1
+    return o_h
+
+def dnn_load_data(train_filename, label_filename, n_class):
     print "Load %s" %train_filename
     X = np.loadtxt(train_filename, dtype='float')
 
     print "load %s" %label_filename
     Y = np.loadtxt(label_filename, dtype='int')
+
+    Y = one_hot(Y, n_class)
 
     return (X, Y)
 
