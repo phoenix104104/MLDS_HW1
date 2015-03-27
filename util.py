@@ -2,26 +2,50 @@ import numpy as np
 import mapping
 import csv
 
-def one_hot(x,n):
-    if type(x) == list:
-        x = np.array(x)
-    x = x.flatten()
-    o_h = np.zeros((len(x),n))
-    o_h[np.arange(len(x)),x] = 1
+def one_hot(y, n_class):
+
+#   map label vector from [1; 3; 10; ...]
+#   to  [ [1, 0, 0, ..., 0];
+#         [0, 0, 1, ..., 0];
+#         [0, 0, 0, ..., 1];
+#         ...               ];
+
+    if type(y) == list:
+        y = np.array(y)
+
+    y = y.flatten()
+    o_h = np.zeros( (len(y), n_class) )
+    o_h[np.arange(len(y)), y] = 1
+
     return o_h
 
-def dnn_load_data(train_filename, label_filename, n_class):
+def dnn_load_data(train_filename, label_filename="", n_class=""):
+
+#   Usage: 
+#       1. Load training data (with label):
+#
+#           (X, y) = dnn_load_data(train_filename, label_filename, n_class)
+#
+#       2. Load testing data (without label):
+#
+#           X = dnn_load_data(test_filename)
+
+
     print "Load %s" %train_filename
     X = np.loadtxt(train_filename, dtype='float')
 
-    print "load %s" %label_filename
-    Y = np.loadtxt(label_filename, dtype='int')
+    if( label_filename != "" ):
 
-    Y = one_hot(Y, n_class)
+        print "load %s" %label_filename
+        Y = np.loadtxt(label_filename, dtype='int')
+        Y = one_hot(Y, n_class)
 
-    return (X, Y)
+        return (X, Y)
 
-def dnn_save_predict(frame_filename, output_filename, predict_index, label_type):
+    else:
+        return (X)
+
+def dnn_save_label(frame_filename, output_filename, predict_index, label_type):
     if( label_type == '39' ):
         predict_label = [str(x) for x in predict_index]
 
@@ -105,7 +129,7 @@ def map_index_to_39(index_list):
     n = len(index_list)
     label = []
     for i in range(n):
-        label.append(index_list[i])
+        label.append(D[index_list[i]])
     
     return label
 
@@ -116,7 +140,7 @@ def map_index_to_48(index_list):
     n = len(index_list)
     label = []
     for i in range(n):
-        label.append(index_list[i])
+        label.append(D[index_list[i]])
     
     return label
 
