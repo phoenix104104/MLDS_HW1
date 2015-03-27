@@ -24,7 +24,8 @@ class DNN:
         for i in range(len(structure)-1):
             w = random_init((structure[i], structure[i+1]))
             self.W.append(w)
-
+        
+        self.structure = structure
         self.lr = learning_rate
         self.epoch = epoch
         self.batch_size = batch_size
