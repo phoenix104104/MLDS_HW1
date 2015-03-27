@@ -40,8 +40,8 @@ class DNN:
         self.batch_size = batch_size
         
         # TODO: model
-        temp = X
-        layer_num = len(W)
+        temp = self.X
+        layer_num = len(self.W)
         for i in range(layer_num-1):
             temp = sigmoid(T.dot(temp, self.W[i]) + self.B[i])
         self.model = softmax(T.dot(temp, self.W[layer_num-1]) + self.B[layer_num-1])
@@ -49,7 +49,7 @@ class DNN:
         # TODO: updates(sgd)
         
         # TODO: y_pred
-        self.y_pred = T.argmax(model, axis=1)
+        self.y_pred = T.argmax(self.model, axis=1)
 
         # TODO: cost
 
