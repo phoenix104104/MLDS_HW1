@@ -80,8 +80,14 @@ class DNN:
             # TODO: batch
             starts = range(0, len(X_train), self.batch_size)
             ends = range(self.batch_size, len(X_train), self.batch_size) + [len(X_train)]
+            randperm = np.random.permutation(len(X_train))
             for start, end in zip(starts, ends): 
-                self.train_epoch(X_train[start:end],Y_train[start:end])
+                X_round = []
+                Y_round = []
+                for rpidx in randperm[start:end]:
+                    X_round.append(X_train[rpidx])
+                    Y_round.append(Y_train[rpidx])
+                self.train_epoch(X_round,Y_round)
             acc = np.mean(np.argmax(Y_valid, axis=1) == self.predict(X_valid) )
             print "Epoch %d, accuracy = %f" %(i, acc) 
 
