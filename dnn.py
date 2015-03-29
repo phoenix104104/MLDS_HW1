@@ -11,14 +11,29 @@ def random_init(shape):
 def random_init_bias(shape):
     return theano.shared(floatX(np.random.randn(*shape) * 0.01),broadcastable=[True, False])
 
-def sigmoid():
+def sigmoid(X):
     # TODO
+    return (T.exp(X)/(T.exp(X)+1))
 
 def softmax():
     # TODO
+    pass
 
 def cross_entropy():
     # TODO: need a cost function, can be something other than cross_entropy
+    pass
+
+def cost_func(X,Y):
+    # merging softmax and cross_entropy to avoid dimension mismatch
+    x_exp = T.exp(X)
+    return T.mean(T.log(T.sum(x_exp, axis=1)) - T.sum(X*Y, axis=1))
+
+def sgd(cost, params, lr):
+    grads = T.grad(cost=cost, wrt=params)
+    updates = []
+    for p, g in zip(params, grads):
+        updates.append([p, p - g * lr])
+    return updates
 
 class DNN:
     def __init__(self, structure, learning_rate=0.05, epoch=10, batch_size=100):
@@ -44,14 +59,16 @@ class DNN:
         layer_num = len(self.W)
         for i in range(layer_num-1):
             temp = sigmoid(T.dot(temp, self.W[i]) + self.B[i])
-        self.model = softmax(T.dot(temp, self.W[layer_num-1]) + self.B[layer_num-1])
-
-        # TODO: updates(sgd)
-        
-        # TODO: y_pred
-        self.y_pred = T.argmax(self.model, axis=1)
+        self.model = T.dot(temp, self.W[layer_num-1]) + self.B[layer_num-1]
 
         # TODO: cost
+        self.cost = cost_func(self.model, self.Y)
+
+        # TODO: updates(sgd)
+        self.updates = sgd(self.cost, self.W+self.B, self.lr)
+
+        # TODO: y_pred
+        self.y_pred = T.argmax(self.model, axis=1)
 
         self.train_epoch = theano.function(inputs=[self.X, self.Y], outputs=self.cost, updates=self.updates, allow_input_downcast=True)
     
@@ -65,8 +82,7 @@ class DNN:
             ends = range(self.batch_size, len(X_train), self.batch_size) + [len(X_train)]
             for start, end in zip(starts, ends): 
                 self.train_epoch(X_train[start:end],Y_train[start:end])
-        acc = np.mean(np.argmax(Y_valid, axis=1) == self.predict(X_valid) )   
-        
-        print "Epoch %d, accuracy = %f" %(i, acc) 
+            acc = np.mean(np.argmax(Y_valid, axis=1) == self.predict(X_valid) )
+            print "Epoch %d, accuracy = %f" %(i, acc) 
 
 
