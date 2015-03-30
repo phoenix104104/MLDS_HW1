@@ -6,17 +6,27 @@ from dnn import DNN
 from pickle import dump, load
 
 
-epoch = 100
-batch_size = 100
-learning_rate = 0.05
+epoch         = 100
+batch_size    = 100
+learning_rate = 0.01
+dropout_prob  = 0.5
 
 N_class = 48
-X_train, Y_train = dnn_load_data('../feature/train1M.fbank', '../label/train1M.48.index', N_class)
-X_valid, Y_valid = dnn_load_data('../feature/valid1M.fbank', '../label/valid1M.48.index', N_class)
+
+data_size = '1M'
+train_filename = '../feature/train%s.fbank' %data_size
+train_labelname = '../label/train%s.48.index' %data_size
+print "Load %s" %train_filename
+X_train, Y_train = dnn_load_data(train_filename, train_labelname, N_class)
+
+valid_filename = '../feature/valid%s.fbank' %data_size
+valid_labelname =  '../label/valid%s.48.index' %data_size
+print "Load %s" %valid_filename
+X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 
 (N_data, N_dim) = X_train.shape
 
-structure = [N_dim, 128, N_class]
+structure = [N_dim, 1000, 1000, N_class]
 
 # load model
 '''
@@ -27,7 +37,8 @@ with open(model_filename, 'r') as file:
 '''
 
 # training
-dnn = DNN(structure, learning_rate, epoch, batch_size)
+print "Start DNN training..."
+dnn = DNN(structure, learning_rate, epoch, batch_size, dropout_prob)
 dnn.train(X_train, Y_train, X_valid, Y_valid)
 
 
