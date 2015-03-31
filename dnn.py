@@ -1,5 +1,6 @@
 import theano
 from theano import tensor as T
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 import numpy as np
 
 def floatX(X):
@@ -35,8 +36,20 @@ def sgd(cost, params, lr):
         updates.append([p, p - g * lr])
     return updates
 
+def rectify(X):
+    return T.maximum(X, 0.0)
+
+def dropout(X, drop_prob=0.0):
+    if( drop_prob > 0.0):
+        retain_prob = 1.0 - drop_prob
+        #X *= np.random.binomial(1, retain_prob, X.shape)
+        X *= MRG_RandomStreams().binomial(X.shape, p=retain_prob, dtype=theano.config.floatX)
+        X /= retain_prob
+
+    return X
+
 class DNN:
-    def __init__(self, structure, learning_rate=0.05, epoch=10, batch_size=100):
+    def __init__(self, structure, learning_rate=0.05, epoch=10, batch_size=100, dropout_prob=0.5):
         self.X = T.fmatrix()
         self.Y = T.fmatrix()
 
@@ -53,21 +66,21 @@ class DNN:
         self.lr = learning_rate
         self.epoch = epoch
         self.batch_size = batch_size
+        self.dropout_prob = dropout_prob
         
-        # TODO: model
-        temp = self.X
+        # training model
+        hidden = self.X
         layer_num = len(self.W)
         for i in range(layer_num-1):
-            temp = sigmoid(T.dot(temp, self.W[i]) + self.B[i])
-        self.model = T.dot(temp, self.W[layer_num-1]) + self.B[layer_num-1]
+            hidden = sigmoid(T.dot(hidden, self.W[i]) + self.B[i])
+            hidden = dropout(hidden, self.dropout_prob)
 
-        # TODO: cost
+        self.model = T.dot(hidden, self.W[layer_num-1]) + self.B[layer_num-1]
+        
         self.cost = cost_func(self.model, self.Y)
 
-        # TODO: updates(sgd)
         self.updates = sgd(self.cost, self.W+self.B, self.lr)
 
-        # TODO: y_pred
         self.y_pred = T.argmax(self.model, axis=1)
 
         self.train_epoch = theano.function(inputs=[self.X, self.Y], outputs=self.cost, updates=self.updates, allow_input_downcast=True)
@@ -90,7 +103,8 @@ class DNN:
                 self.train_epoch(X_round,Y_round)
             acc = np.mean(np.argmax(Y_valid, axis=1) == self.predict(X_valid) )
             acc_all.append(acc)
-            print "Epoch %d, accuracy = %f" %(i, acc) 
+
+            print "Epoch %d, accuracy = %f" %(i, acc)
         
         return acc_all
 

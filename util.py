@@ -2,6 +2,19 @@ import numpy as np
 import mapping
 import csv
 
+def report_time(ts, te):
+    D = 24 * 60 * 60
+    H = 60 * 60
+    M = 60
+
+    total_sec = te - ts;
+
+    day  = np.floor(total_sec / D)
+    hour = np.floor( np.mod(total_sec, D) / H )
+    min  = np.floor( np.mod(np.mod(total_sec, D), H) / M )
+    sec  = np.mod( np.mod(np.mod(total_sec, D), H), M)
+    print "Elapsed time is %d Days, %d Hours, %d Mins, %d secs" %(day, hour, min, sec)
+
 def one_hot(y, n_class):
 
 #   map label vector from [1; 3; 10; ...]

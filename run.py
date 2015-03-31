@@ -1,22 +1,35 @@
 import theano
 from theano import tensor as T
 import numpy as np
-from util import dnn_load_data
+from util import dnn_load_data, dnn_save_label, report_time
 from dnn import DNN
 from pickle import dump, load
+import time
 
 
-epoch = 100
-batch_size = 100
+epoch         = 200
+batch_size    = 100
 learning_rate = 0.05
+dropout_prob  = 0.0
 
+feature = 'fbank'
+label_type = '48'
 N_class = 48
-X_train, Y_train = dnn_load_data('../feature/train1M.fbank', '../label/train1M.48.index', N_class)
-X_valid, Y_valid = dnn_load_data('../feature/valid1M.fbank', '../label/valid1M.48.index', N_class)
+
+data_size = '1M'
+train_filename = '../feature/train%s.%s' %(data_size, feature)
+train_labelname = '../label/train%s.%s.index' %(data_size, label_type)
+print "Load %s" %train_filename
+X_train, Y_train = dnn_load_data(train_filename, train_labelname, N_class)
+
+valid_filename = '../feature/valid%s.%s' %(data_size, feature)
+valid_labelname =  '../label/valid%s.%s.index' %(data_size, label_type)
+print "Load %s" %valid_filename
+X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 
 (N_data, N_dim) = X_train.shape
 
-structure = [N_dim, 128, N_class]
+structure = [N_dim, 100, 100, 100, N_class]
 
 # load model
 '''
@@ -27,15 +40,44 @@ with open(model_filename, 'r') as file:
 '''
 
 # training
-dnn = DNN(structure, learning_rate, epoch, batch_size)
-dnn.train(X_train, Y_train, X_valid, Y_valid)
+print "Start DNN training..."
+print "NN structure: %s" %("-".join(str(s) for s in structure))
+print "Learning rate = %f, epoch = %d" %(learning_rate, epoch)
+print "Dropout probability = %s" %(str(dropout_prob))
+dnn = DNN(structure, learning_rate, epoch, batch_size, dropout_prob)
 
+ts = time.time()
+acc_all = dnn.train(X_train, Y_train, X_valid, Y_valid)
+te = time.time()
+report_time(ts, te)
+
+# clear X_train, X_valid
+X_train = []
+Y_train = []
+X_valid = []
+Y_valid = []
+
+# testing
+test_filename = '../feature/test.fbank'
+X_test = dnn_load_data(test_filename)
+
+parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
+              %(feature, label_type, "_".join(str(h) for h in structure), \
+                epoch, str(learning_rate), str(dropout_prob) )
+
+output_filename = '../pred/%s.csv' %parameters
+
+Y_pred = dnn.predict(X_test)
+dnn_save_label('../frame/test.frame', output_filename, Y_pred, label_type)
 
 # save model
-'''
-model_filename = 'test.model'
+
+model_filename = '../model/%s.model' %parameters
 with open(model_filename, 'w') as file:
     print "Save model %s" %model_filename
     dump(dnn, file)
-'''
 
+
+log_filename = '../log/%s.log' %parameters
+print "Save %s" %log_filename
+np.savetxt(log_filename, acc_all, fmt='%.7f')
