@@ -108,7 +108,7 @@ class DNN:
         
         return acc_all
 
-    def set_learning_rate(learning_rate):
+    def set_learning_rate(self, learning_rate):
         self.lr.set_value(learning_rate)
 
 
