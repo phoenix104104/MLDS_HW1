@@ -50,8 +50,8 @@ def dropout(X, drop_prob=0.0):
 
 class DNN:
     def __init__(self, structure, learning_rate=0.05, epoch=10, batch_size=100, dropout_prob=0.5):
-        self.X = T.fmatrix()
-        self.Y = T.fmatrix()
+        self.X = T.matrix(dtype=theano.config.floatX)
+        self.Y = T.matrix(dtype=theano.config.floatX)
 
         self.W = []
         self.B = []
@@ -63,7 +63,7 @@ class DNN:
             self.B.append(b)
 
         self.structure = structure
-        self.lr = learning_rate
+        self.lr = theano.shared(np.cast[theano.config.floatX](learning_rate))
         self.epoch = epoch
         self.batch_size = batch_size
         self.dropout_prob = dropout_prob
@@ -107,4 +107,8 @@ class DNN:
             print "Epoch %d, accuracy = %f" %(i, acc)
         
         return acc_all
+
+    def set_learning_rate(learning_rate):
+        self.lr.set_value(learning_rate)
+
 
