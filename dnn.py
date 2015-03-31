@@ -102,6 +102,7 @@ class DNN:
 
 
     def train(self, X_train, Y_train, X_valid, Y_valid):
+        acc_all = []
         for i in range(self.epoch):
             # TODO: batch
             starts = range(0, len(X_train), self.batch_size)
@@ -115,6 +116,8 @@ class DNN:
                     Y_round.append(Y_train[rpidx])
                 self.train_epoch(X_round,Y_round)
             acc = np.mean(np.argmax(Y_valid, axis=1) == self.predict(X_valid) )
-            print "Epoch %d, accuracy = %f" %(i, acc) 
-
+            acc_all.append(acc)
+            print "Epoch %d, accuracy = %f" %(i, acc)
+        
+        return acc_all
 
