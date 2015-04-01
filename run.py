@@ -10,19 +10,37 @@ import time, sys, os
 
 epoch         = 1000
 batch_size    = 100
-learning_rate = 0.05
+learning_rate = 0.01
 dropout_prob  = [0., 0.]
 activation = 'sigmoid'
 #activation = 'tanh'
 #activation = 'ReLU'
 
-hidden = [128]
+hidden = [1024, 1024]
 
 feature = 'fbank'
 label_type = '48'
 N_class = 48
-
 data_size = '1M'
+
+parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
+              %(feature, label_type, "_".join(str(h) for h in hidden), \
+                epoch, str(learning_rate), \
+                "_".join(str(p) for p in dropout_prob) )
+
+model_dir = '../model/%s_%s_nn%s_lr%s_drop%s' \
+              %(feature, label_type, "_".join(str(h) for h in hidden), \
+                str(learning_rate), "_".join(str(p) for p in dropout_prob) )
+
+if( os.path.isdir(model_dir) ):
+    print "Warning! Directory %s already exists!" %model_dir
+    print ">>>>> ctrl+c to leave the program, or press any key to continue..."
+    raw_input()
+else:
+    print "mkdir %s" %model_dir
+    os.mkdir(model_dir)
+
+
 train_filename = '../feature/train%s.%s' %(data_size, feature)
 train_labelname = '../label/train%s.%s.index' %(data_size, label_type)
 print "Load %s" %train_filename
@@ -38,22 +56,6 @@ X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 structure = [N_dim] + hidden + [N_class]
 
 
-parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in hidden), \
-                epoch, str(learning_rate), \
-                "_".join(str(p) for p in dropout_prob) )
-
-model_dir = '../model/%s_%s_nn%s_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in hidden), \
-                str(learning_rate), "_".join(str(p) for p in dropout_prob) )
-
-if( os.path.isdir(model_dir) ):
-    print "Warning! Directory %s already exists!" %model_dir
-    print "ctrl+c to leave the program, or press any key to continue"
-    raw_input()
-else:
-    print "mkdir %s" %model_dir
-    os.mkdir(model_dir)
 
 print "Build DNN structure..."
 dnn = DNN(structure, learning_rate, batch_size, activation, dropout_prob, model_dir)
