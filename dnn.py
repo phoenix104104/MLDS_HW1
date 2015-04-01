@@ -104,6 +104,7 @@ class DNN:
         self.predict = theano.function(inputs=[self.X], outputs=self.y_pred, allow_input_downcast=True)
         
         print "NN structure: %s" %("-".join(str(s) for s in structure))
+        print "Initial learning rate = %s" %(str(learning_rate))
         print "Activation function = %s" %act
         print "Dropout probability = (%s, %s)" %(str(dropout_prob[0]), str(dropout_prob[1]))
 
