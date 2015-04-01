@@ -1,16 +1,22 @@
 import theano
 from theano import tensor as T
 import numpy as np
-from util import dnn_load_data, dnn_save_label, report_time
+from util import dnn_load_data, dnn_save_label, report_time, dnn_save_model
 from dnn import DNN
 from pickle import dump, load
-import time
+import time, sys, os
 
+#---------- training script ----------#
 
-epoch         = 200
+epoch         = 1000
 batch_size    = 100
 learning_rate = 0.05
-dropout_prob  = 0.
+dropout_prob  = [0., 0.]
+activation = 'sigmoid'
+#activation = 'tanh'
+#activation = 'ReLU'
+
+hidden = [128]
 
 feature = 'fbank'
 label_type = '48'
@@ -29,39 +35,61 @@ X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 
 (N_data, N_dim) = X_train.shape
 
-structure = [N_dim, 2048, 2048, N_class]
+structure = [N_dim] + hidden + [N_class]
 
-# load model
-'''
-model_filename = 'test.model'
-with open(model_filename, 'r') as file:
-    print "Load model %s" %model_filename
-    dnn = load(file)
-'''
+
+parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
+              %(feature, label_type, "_".join(str(h) for h in hidden), \
+                epoch, str(learning_rate), \
+                "_".join(str(p) for p in dropout_prob) )
+
+model_dir = '../model/%s_%s_nn%s_lr%s_drop%s' \
+              %(feature, label_type, "_".join(str(h) for h in hidden), \
+                str(learning_rate), "_".join(str(p) for p in dropout_prob) )
+
+if( os.path.isdir(model_dir) ):
+    print "Warning! Directory %s already exists!" %model_dir
+    print "ctrl+c to leave the program, or press any key to continue"
+    raw_input()
+else:
+    print "mkdir %s" %model_dir
+    os.mkdir(model_dir)
+
+print "Build DNN structure..."
+dnn = DNN(structure, learning_rate, batch_size, activation, dropout_prob, model_dir)
 
 # training
 print "Start DNN training..."
-print "NN structure: %s" %("-".join(str(s) for s in structure))
-print "Learning rate = %f, epoch = %d" %(learning_rate, epoch)
-print "Dropout probability = %s" %(str(dropout_prob))
-dnn = DNN(structure, learning_rate, epoch, batch_size, dropout_prob)
-
 ts = time.time()
-acc_all = dnn.train(X_train, Y_train, X_valid, Y_valid)
+
+acc_all = []
+for i in range(epoch):
+    lr = learning_rate*1.0
+
+    dnn.train(X_train, Y_train, lr)
+
+    acc = np.mean(np.argmax(Y_valid, axis=1) == dnn.batch_predict(X_valid) )
+    acc_all.append(acc)
+
+    print "Epoch %d, accuracy = %f" %(i, acc)
+
+    # dump intermediate model and log per 100 epoch
+    if( np.mod( (i+1), 100) == 0):
+        model_filename = os.path.join(model_dir, "epoch%d.model"%(i+1))
+        dnn_save_model(model_filename, dnn)
+        
+        log_filename = '../log/%s.log' %parameters
+        print "Save %s" %log_filename
+        np.savetxt(log_filename, acc_all, fmt='%.7f')
+
+
 te = time.time()
 report_time(ts, te)
 
 
 # save model
-
-parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in structure), \
-                epoch, str(learning_rate), str(dropout_prob) )
-
-model_filename = '../model/%s.model' %parameters
-with open(model_filename, 'w') as file:
-    print "Save model %s" %model_filename
-    dump(dnn, file)
+model_filename = os.path.join(model_dir, "epoch%d.model"%epoch)
+dnn_save_model(model_filename, dnn)
 
 # save accuracy log
 log_filename = '../log/%s.log' %parameters
@@ -82,7 +110,6 @@ X_test = dnn_load_data(test_filename)
 
 output_filename = '../pred/%s.csv' %parameters
 
-pred_batch_size = 1000
-Y_pred = dnn.batch_predict(X_test, pred_batch_size)
+Y_pred = dnn.batch_predict(X_test)
 dnn_save_label('../frame/test.frame', output_filename, Y_pred, label_type)
 

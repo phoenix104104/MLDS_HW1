@@ -2,6 +2,8 @@ import theano
 from theano import tensor as T
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 import numpy as np
+import sys, os
+from pickle import dump, load
 
 def floatX(X):
     return np.asarray(X, dtype=theano.config.floatX)
@@ -15,6 +17,9 @@ def random_init_bias(shape):
 def sigmoid(X):
     # TODO
     return (T.exp(X)/(T.exp(X)+1))
+
+def tanh(X):
+    return T.tanh(X)
 
 def softmax():
     # TODO
@@ -49,7 +54,7 @@ def dropout(X, drop_prob=0.0):
     return X
 
 class DNN:
-    def __init__(self, structure, learning_rate=0.05, epoch=10, batch_size=100, dropout_prob=0.5):
+    def __init__(self, structure, learning_rate=0.05, batch_size=100, act='sigmoid', dropout_prob=[0.0, 0.0], model_dir='../model'):
         self.X = T.matrix(dtype=theano.config.floatX)
         self.Y = T.matrix(dtype=theano.config.floatX)
 
@@ -64,16 +69,27 @@ class DNN:
 
         self.structure = structure
         self.lr = theano.shared(np.cast[theano.config.floatX](learning_rate))
-        self.epoch = epoch
         self.batch_size = batch_size
-        self.dropout_prob = dropout_prob
-        
+        self.input_drop_prob  = dropout_prob[0]
+        self.hidden_drop_prob = dropout_prob[1]
+        self.model_dir = model_dir
+
+        if(act == 'sigmoid'):
+            self.act = sigmoid
+        elif(act == 'tanh'):
+            self.act = tanh
+        elif(act == 'ReLU'):
+            self.act = rectify
+        else:
+            print "Unknown activation %s" %act
+            sys.exit(1)
+
         # training model
-        hidden = self.X
+        hidden = dropout(self.X, self.input_drop_prob)
         layer_num = len(self.W)
         for i in range(layer_num-1):
-            hidden = sigmoid(T.dot(hidden, self.W[i]) + self.B[i])
-            hidden = dropout(hidden, self.dropout_prob)
+            hidden = self.act(T.dot(hidden, self.W[i]) + self.B[i])
+            hidden = dropout(hidden, self.hidden_drop_prob)
 
         self.model = T.dot(hidden, self.W[layer_num-1]) + self.B[layer_num-1]
         
@@ -83,30 +99,30 @@ class DNN:
 
         self.y_pred = T.argmax(self.model, axis=1)
 
-        self.train_epoch = theano.function(inputs=[self.X, self.Y], outputs=self.cost, updates=self.updates, allow_input_downcast=True)
+        self.train_batch = theano.function(inputs=[self.X, self.Y], outputs=self.cost, updates=self.updates, allow_input_downcast=True)
     
         self.predict = theano.function(inputs=[self.X], outputs=self.y_pred, allow_input_downcast=True)
-
-
-    def train(self, X_train, Y_train, X_valid, Y_valid):
-        acc_all = []
-        for i in range(self.epoch):
-            starts = range(0, len(X_train), self.batch_size)
-            ends = range(self.batch_size, len(X_train), self.batch_size) + [len(X_train)]
-            randperm = np.random.permutation(len(X_train))
-            for start, end in zip(starts, ends): 
-                X_round = []
-                Y_round = []
-                for rpidx in randperm[start:end]:
-                    X_round.append(X_train[rpidx])
-                    Y_round.append(Y_train[rpidx])
-                self.train_epoch(X_round,Y_round)
-            acc = np.mean(np.argmax(Y_valid, axis=1) == self.predict(X_valid) )
-            acc_all.append(acc)
-
-            print "Epoch %d, accuracy = %f" %(i, acc)
         
-        return acc_all
+        print "NN structure: %s" %("-".join(str(s) for s in structure))
+        print "Activation function = %s" %act
+        print "Dropout probability = (%s, %s)" %(str(dropout_prob[0]), str(dropout_prob[1]))
+
+    def train(self, X_train, Y_train, learning_rate):
+        
+        self.set_learning_rate(learning_rate)        
+        starts = range(0, len(X_train), self.batch_size)
+        ends = range(self.batch_size, len(X_train), self.batch_size) + [len(X_train)]
+        randperm = np.random.permutation(len(X_train))
+
+        for start, end in zip(starts, ends): 
+            X_round = []
+            Y_round = []
+            for rpidx in randperm[start:end]:
+                X_round.append(X_train[rpidx])
+                Y_round.append(Y_train[rpidx])
+
+            self.train_batch(X_round,Y_round)
+
 
     def set_learning_rate(self, learning_rate):
         self.lr.set_value(learning_rate)
@@ -124,6 +140,4 @@ class DNN:
         pred = np.concatenate(pred_list)
         return pred
 
-
-
-
+    

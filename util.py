@@ -1,6 +1,7 @@
 import numpy as np
 import mapping
 import csv
+from pickle import dump, load
 
 def report_time(ts, te):
     D = 24 * 60 * 60
@@ -57,6 +58,19 @@ def dnn_load_data(train_filename, label_filename="", n_class=""):
 
     else:
         return (X)
+
+def dnn_save_model(model_filename, model):
+
+    with open(model_filename, 'w+') as f:
+        print "Save %s" %model_filename
+        dump(model, f)
+
+def dnn_load_model(model_filename):
+
+    with open(model_filename, 'r') as f:
+        print "Load %s" %model_filename
+        model = load(f)
+        return model
 
 def dnn_save_label(frame_filename, output_filename, predict_index, label_type):
     if( label_type == '39' ):
