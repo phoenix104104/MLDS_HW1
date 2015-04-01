@@ -111,4 +111,19 @@ class DNN:
     def set_learning_rate(self, learning_rate):
         self.lr.set_value(learning_rate)
 
+    def batch_predict(self, X, block_size=1000):
+        N = len(X)
+        starts = range(0, N, block_size)
+        ends   = range(block_size, N, block_size) + [N]
+        
+        pred_list = []
+        for st, ed in zip(starts, ends):
+            x = X[st:ed]
+            pred_list.append( self.predict(x) )
+
+        pred = np.concatenate(pred_list)
+        return pred
+
+
+
 

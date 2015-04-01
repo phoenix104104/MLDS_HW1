@@ -7,10 +7,10 @@ from pickle import dump, load
 import time
 
 
-epoch         = 200
+epoch         = 2
 batch_size    = 100
 learning_rate = 0.05
-dropout_prob  = 0.0
+dropout_prob  = 0.
 
 feature = 'fbank'
 label_type = '48'
@@ -29,7 +29,7 @@ X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 
 (N_data, N_dim) = X_train.shape
 
-structure = [N_dim, 100, 100, 100, N_class]
+structure = [N_dim, 1024, 1024, N_class]
 
 # load model
 '''
@@ -51,33 +51,39 @@ acc_all = dnn.train(X_train, Y_train, X_valid, Y_valid)
 te = time.time()
 report_time(ts, te)
 
-# clear X_train, X_valid
-X_train = []
-Y_train = []
-X_valid = []
-Y_valid = []
 
-# testing
-test_filename = '../feature/test.fbank'
-X_test = dnn_load_data(test_filename)
+# save model
 
 parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
               %(feature, label_type, "_".join(str(h) for h in structure), \
                 epoch, str(learning_rate), str(dropout_prob) )
-
-output_filename = '../pred/%s.csv' %parameters
-
-Y_pred = dnn.predict(X_test)
-dnn_save_label('../frame/test.frame', output_filename, Y_pred, label_type)
-
-# save model
 
 model_filename = '../model/%s.model' %parameters
 with open(model_filename, 'w') as file:
     print "Save model %s" %model_filename
     dump(dnn, file)
 
-
+# save accuracy log
 log_filename = '../log/%s.log' %parameters
 print "Save %s" %log_filename
 np.savetxt(log_filename, acc_all, fmt='%.7f')
+
+
+# clear X_train, X_valid
+X_train = []
+Y_train = []
+X_valid = []
+Y_valid = []
+
+
+# testing
+test_filename = '../feature/test.fbank'
+X_test = dnn_load_data(test_filename)
+
+
+output_filename = '../pred/%s.csv' %parameters
+
+pred_batch_size = 1000
+Y_pred = dnn.batch_predict(X_test, pred_batch_size)
+dnn_save_label('../frame/test.frame', output_filename, Y_pred, label_type)
+
