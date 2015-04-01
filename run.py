@@ -7,7 +7,7 @@ from pickle import dump, load
 import time
 
 
-epoch         = 2
+epoch         = 200
 batch_size    = 100
 learning_rate = 0.05
 dropout_prob  = 0.
@@ -29,7 +29,7 @@ X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 
 (N_data, N_dim) = X_train.shape
 
-structure = [N_dim, 1024, 1024, N_class]
+structure = [N_dim, 2048, 2048, N_class]
 
 # load model
 '''
@@ -79,7 +79,6 @@ Y_valid = []
 # testing
 test_filename = '../feature/test.fbank'
 X_test = dnn_load_data(test_filename)
-
 
 output_filename = '../pred/%s.csv' %parameters
 
