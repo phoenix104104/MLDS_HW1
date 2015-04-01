@@ -93,7 +93,7 @@ def dnn_save_label(frame_filename, output_filename, predict_index, label_type):
     for i in range(len(predict_label)):
         csv_data.append([frame_list[i], predict_label[i]])
     
-    with open(output_filename, 'w') as file:
+    with open(output_filename, 'w+') as file:
         print "Save %s" %output_filename
         writer = csv.writer(file)
         writer.writerow(["Id", "Prediction"])

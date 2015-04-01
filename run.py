@@ -6,6 +6,7 @@ from dnn import DNN
 from pickle import dump, load
 import time, sys, os
 
+sys.setrecursionlimit(9999) # to dump large network
 #---------- training script ----------#
 
 epoch         = 1000
