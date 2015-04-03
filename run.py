@@ -12,6 +12,7 @@ sys.setrecursionlimit(9999) # to dump large network
 epoch         = 1000
 batch_size    = 100
 learning_rate = 0.01
+lr_decay      = 0.999
 dropout_prob  = [0., 0.]
 activation = 'sigmoid'
 #activation = 'tanh'
@@ -20,8 +21,8 @@ activation = 'sigmoid'
 hidden = [1024, 1024]
 
 feature = 'fbank'
-label_type = '48'
-N_class = 48
+label_type = 'state'
+N_class = 1943
 data_size = '1M'
 
 parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
@@ -57,7 +58,6 @@ X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 structure = [N_dim] + hidden + [N_class]
 
 
-
 print "Build DNN structure..."
 dnn = DNN(structure, learning_rate, batch_size, activation, dropout_prob, model_dir)
 
@@ -66,8 +66,8 @@ print "Start DNN training..."
 ts = time.time()
 
 acc_all = []
+lr = learning_rate
 for i in range(epoch):
-    lr = learning_rate*1.0
 
     dnn.train(X_train, Y_train, lr)
 
@@ -85,6 +85,7 @@ for i in range(epoch):
         print "Save %s" %log_filename
         np.savetxt(log_filename, acc_all, fmt='%.7f')
 
+    lr *= lr_decay
 
 te = time.time()
 report_time(ts, te)

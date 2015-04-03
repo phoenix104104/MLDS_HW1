@@ -7,15 +7,15 @@ import time, os
 
 #---------- testing script ----------#
 
-epoch         = 20      # use [model_dir]/epoch.model 
+epoch         = 800      # use [model_dir]/epoch.model 
 batch_size    = 100
-learning_rate = 0.05
+learning_rate = 0.01
 dropout_prob  = [0., 0.]
 
 feature = 'fbank'
 label_type = '48'
 
-hidden = [128]
+hidden = [1024, 1024]
 
 parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
               %(feature, label_type, "_".join(str(h) for h in hidden), \
