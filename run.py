@@ -11,28 +11,29 @@ sys.setrecursionlimit(9999) # to dump large network
 
 epoch         = 1000
 batch_size    = 100
-learning_rate = 0.01
-lr_decay      = 0.999
-dropout_prob  = [0., 0.]
+learning_rate = 0.05
+lr_decay      = 0.75
+dropout_prob  = [0.1, 0.1]
 activation = 'sigmoid'
 #activation = 'tanh'
 #activation = 'ReLU'
 
-hidden = [1024, 1024]
+hidden = [2048, 2048]
 
-feature = 'fbank'
-label_type = 'state'
-N_class = 1943
+feature = 'fm'
+label_type = '48'
+N_class = 48
 data_size = '1M'
 
-parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in hidden), \
-                epoch, str(learning_rate), \
+parameters = '%s_%s_%s_nn%s_epoch%d_lr%s_decay%s_drop%s' \
+              %(feature, label_type, data_size, \
+                "_".join(str(h) for h in hidden), \
+                epoch, str(learning_rate), str(lr_decay), \
                 "_".join(str(p) for p in dropout_prob) )
 
-model_dir = '../model/%s_%s_nn%s_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in hidden), \
-                str(learning_rate), "_".join(str(p) for p in dropout_prob) )
+model_dir = '../model/%s_%s_%s_nn%s_lr%s_decay%s_drop%s' \
+              %(feature, label_type, data_size, "_".join(str(h) for h in hidden), \
+                str(learning_rate), str(lr_decay), "_".join(str(p) for p in dropout_prob) )
 
 if( os.path.isdir(model_dir) ):
     print "Warning! Directory %s already exists!" %model_dir
@@ -42,15 +43,22 @@ else:
     print "mkdir %s" %model_dir
     os.mkdir(model_dir)
 
+if( data_size == 'all' ):
+    train_filename = '../feature/train.%s' %(feature)
+    train_labelname = '../label/train.%s.index' %(label_type)
+else:
+    train_filename = '../feature/train%s.%s' %(data_size, feature)
+    train_labelname = '../label/train%s.%s.index' %(data_size, label_type)
 
-train_filename = '../feature/train%s.%s' %(data_size, feature)
-train_labelname = '../label/train%s.%s.index' %(data_size, label_type)
-print "Load %s" %train_filename
 X_train, Y_train = dnn_load_data(train_filename, train_labelname, N_class)
 
-valid_filename = '../feature/valid%s.%s' %(data_size, feature)
-valid_labelname =  '../label/valid%s.%s.index' %(data_size, label_type)
-print "Load %s" %valid_filename
+if( data_size == 'all' ):
+    valid_filename = '../feature/valid1M.%s' %(feature)
+    valid_labelname =  '../label/valid1M.%s.index' %(label_type)
+else:
+    valid_filename = '../feature/valid%s.%s' %(data_size, feature)
+    valid_labelname =  '../label/valid%s.%s.index' %(data_size, label_type)
+
 X_valid, Y_valid = dnn_load_data(valid_filename, valid_labelname, N_class)
 
 (N_data, N_dim) = X_train.shape
@@ -62,7 +70,7 @@ print "Build DNN structure..."
 dnn = DNN(structure, learning_rate, batch_size, activation, dropout_prob, model_dir)
 
 # training
-print "Start DNN training..."
+print "Start DNN training...(lr_decay = %s)" %(str(lr_decay))
 ts = time.time()
 
 acc_all = []
@@ -74,7 +82,7 @@ for i in range(epoch):
     acc = np.mean(np.argmax(Y_valid, axis=1) == dnn.batch_predict(X_valid) )
     acc_all.append(acc)
 
-    print "Epoch %d, accuracy = %f" %(i, acc)
+    print "Epoch %d, lr = %.4f, accuracy = %f" %(i, lr, acc)
 
     # dump intermediate model and log per 100 epoch
     if( np.mod( (i+1), 100) == 0):
@@ -84,8 +92,8 @@ for i in range(epoch):
         log_filename = '../log/%s.log' %parameters
         print "Save %s" %log_filename
         np.savetxt(log_filename, acc_all, fmt='%.7f')
-
-    lr *= lr_decay
+    
+        lr *= lr_decay
 
 te = time.time()
 report_time(ts, te)

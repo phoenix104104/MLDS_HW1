@@ -59,6 +59,10 @@ def dnn_load_data(train_filename, label_filename="", n_class=""):
     else:
         return (X)
 
+def dnn_save_data(output_filename, X):
+    print "Save %s" %output_filename
+    np.savetxt(output_filename, X, fmt='%.7f') 
+
 def dnn_save_model(model_filename, model):
 
     with open(model_filename, 'w+') as f:
