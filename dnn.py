@@ -5,6 +5,7 @@ import numpy as np
 import sys, os
 from pickle import dump, load
 
+
 def floatX(X):
     return np.asarray(X, dtype=theano.config.floatX)
 
@@ -45,9 +46,9 @@ def rectify(X):
     return T.maximum(X, 0.0)
 
 def dropout(X, drop_prob=0.0):
+
     if( drop_prob > 0.0):
-        retain_prob = 1.0 - drop_prob
-        #X *= np.random.binomial(1, retain_prob, X.shape)
+        retain_prob = 1 - drop_prob
         X *= MRG_RandomStreams().binomial(X.shape, p=retain_prob, dtype=theano.config.floatX)
         X /= retain_prob
 
@@ -90,7 +91,7 @@ class DNN:
         for i in range(layer_num-1):
             hidden = self.act(T.dot(hidden, self.W[i]) + self.B[i])
             hidden = dropout(hidden, self.hidden_drop_prob)
-
+       
         self.model = T.dot(hidden, self.W[layer_num-1]) + self.B[layer_num-1]
         
         self.cost = cost_func(self.model, self.Y)

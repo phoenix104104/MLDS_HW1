@@ -7,23 +7,25 @@ import time, os
 
 #---------- testing script ----------#
 
-epoch         = 800      # use [model_dir]/epoch.model 
+epoch         = 600      # use [model_dir]/epoch.model 
 batch_size    = 100
-learning_rate = 0.01
+learning_rate = 0.05
 dropout_prob  = [0., 0.]
 
 feature = 'fbank'
 label_type = '48'
+data_size = '1M'
 
 hidden = [1024, 1024]
 
-parameters = '%s_%s_nn%s_epoch%d_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in hidden), \
+parameters = '%s_%s_%s_nn%s_epoch%d_lr%s_drop%s' \
+              %(feature, label_type, data_size, \
+                "_".join(str(h) for h in hidden), \
                 epoch, str(learning_rate), \
                 "_".join(str(p) for p in dropout_prob) )
 
-model_dir = '../model/%s_%s_nn%s_lr%s_drop%s' \
-              %(feature, label_type, "_".join(str(h) for h in hidden), \
+model_dir = '../model/%s_%s_%s_nn%s_lr%s_drop%s' \
+              %(feature, label_type, data_size, "_".join(str(h) for h in hidden), \
                 str(learning_rate), "_".join(str(p) for p in dropout_prob) )
 
 # load model

@@ -12,27 +12,27 @@ sys.setrecursionlimit(9999) # to dump large network
 epoch         = 1000
 batch_size    = 100
 learning_rate = 0.05
-lr_decay      = 0.75
-dropout_prob  = [0.1, 0.1]
+lr_decay      = 1
+dropout_prob  = [0., 0.]
 activation = 'sigmoid'
 #activation = 'tanh'
 #activation = 'ReLU'
 
-hidden = [2048, 2048]
+hidden = [128, 128]
 
-feature = 'fm'
+feature = 'fbank'
 label_type = '48'
 N_class = 48
 data_size = '1M'
 
-parameters = '%s_%s_%s_nn%s_epoch%d_lr%s_decay%s_drop%s' \
+parameters = '%s_%s_%s_nn%s_%s_epoch%d_lr%s_decay%s_drop%s' \
               %(feature, label_type, data_size, \
-                "_".join(str(h) for h in hidden), \
+                "_".join(str(h) for h in hidden), activation, \
                 epoch, str(learning_rate), str(lr_decay), \
                 "_".join(str(p) for p in dropout_prob) )
 
-model_dir = '../model/%s_%s_%s_nn%s_lr%s_decay%s_drop%s' \
-              %(feature, label_type, data_size, "_".join(str(h) for h in hidden), \
+model_dir = '../model/%s_%s_%s_nn%s_%s_lr%s_decay%s_drop%s' \
+              %(feature, label_type, data_size, "_".join(str(h) for h in hidden), activation, \
                 str(learning_rate), str(lr_decay), "_".join(str(p) for p in dropout_prob) )
 
 if( os.path.isdir(model_dir) ):
@@ -93,7 +93,7 @@ for i in range(epoch):
         print "Save %s" %log_filename
         np.savetxt(log_filename, acc_all, fmt='%.7f')
     
-        lr *= lr_decay
+    lr *= lr_decay
 
 te = time.time()
 report_time(ts, te)

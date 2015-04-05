@@ -19,7 +19,7 @@ def make_frame(frame_str, index):
     return frame
 
 
-fm = 3  # number of frame to merge
+fm = 4  # number of frame to merge
 
 
 feature_name = 'fbank'

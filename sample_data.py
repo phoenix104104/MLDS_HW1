@@ -10,7 +10,7 @@ filename = 'valid1M.list'
 print "Load %s" %filename
 valid_index = np.loadtxt(filename, dtype='int')
 
-for fv in ['fbank', 'mfcc']:
+for fv in ['fbank3', 'fbank4']:
 
     train_filename = '../feature/train.%s' %fv
     print "Load %s" %train_filename
@@ -27,7 +27,7 @@ for fv in ['fbank', 'mfcc']:
     print "Save %s" %filename
     np.savetxt(filename, X_valid, fmt='%.7f')
 
-
+"""
 for label in ['48', 'state']:
 
     label_filename = '../label/train.%s.index' %label
@@ -44,4 +44,4 @@ for label in ['48', 'state']:
     filename = '../label/valid1M.%s.index' %label
     print "Save %s" %filename
     np.savetxt(filename, y_valid, fmt='%d')
-
+"""
