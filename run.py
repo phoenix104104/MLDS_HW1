@@ -1,7 +1,7 @@
 import theano
 from theano import tensor as T
 import numpy as np
-from util import dnn_load_data, dnn_save_label, report_time, dnn_save_model
+from util import dnn_load_data, dnn_save_label, report_time, dnn_save_model, dnn_load_model
 from dnn import DNN
 from pickle import dump, load
 import time, sys, os
@@ -10,7 +10,7 @@ sys.setrecursionlimit(9999) # to dump large network
 #---------- training script ----------#
 
 epoch         = 1000
-batch_size    = 100
+batch_size    = 256
 learning_rate = 0.05
 lr_decay      = 1
 dropout_prob  = [0., 0.]
@@ -18,11 +18,11 @@ activation = 'sigmoid'
 #activation = 'tanh'
 #activation = 'ReLU'
 
-hidden = [128, 128]
+hidden = [2048, 2048]
 
-feature = 'fbank'
-label_type = '48'
-N_class = 48
+feature = 'fbank4'
+label_type = 'state'
+N_class = 1943
 data_size = '1M'
 
 parameters = '%s_%s_%s_nn%s_%s_epoch%d_lr%s_decay%s_drop%s' \
@@ -69,12 +69,13 @@ structure = [N_dim] + hidden + [N_class]
 print "Build DNN structure..."
 dnn = DNN(structure, learning_rate, batch_size, activation, dropout_prob, model_dir)
 
+
 # training
 print "Start DNN training...(lr_decay = %s)" %(str(lr_decay))
-ts = time.time()
 
 acc_all = []
 lr = learning_rate
+ts = time.time()
 for i in range(epoch):
 
     dnn.train(X_train, Y_train, lr)
@@ -117,7 +118,7 @@ Y_valid = []
 
 
 # testing
-test_filename = '../feature/test.fbank'
+test_filename = '../feature/test.%s' %feature
 X_test = dnn_load_data(test_filename)
 
 output_filename = '../pred/%s.csv' %parameters

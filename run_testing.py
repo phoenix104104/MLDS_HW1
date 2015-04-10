@@ -7,26 +7,28 @@ import time, os
 
 #---------- testing script ----------#
 
-epoch         = 600      # use [model_dir]/epoch.model 
-batch_size    = 100
+epoch         = 1200      # use [model_dir]/epoch.model 
+batch_size    = 256
 learning_rate = 0.05
-dropout_prob  = [0., 0.]
+lr_decay      = 1
+dropout_prob  = [0.2, 0.2]
+activation    = 'sigmoid'
 
-feature = 'fbank'
-label_type = '48'
+feature = 'fbank4'
+label_type = 'state'
 data_size = '1M'
 
-hidden = [1024, 1024]
+hidden = [2048, 2048]
 
-parameters = '%s_%s_%s_nn%s_epoch%d_lr%s_drop%s' \
+parameters = '%s_%s_%s_nn%s_%s_epoch%d_lr%s_decay%s_drop%s' \
               %(feature, label_type, data_size, \
-                "_".join(str(h) for h in hidden), \
-                epoch, str(learning_rate), \
+                "_".join(str(h) for h in hidden), activation, \
+                epoch, str(learning_rate), str(lr_decay), \
                 "_".join(str(p) for p in dropout_prob) )
 
-model_dir = '../model/%s_%s_%s_nn%s_lr%s_drop%s' \
-              %(feature, label_type, data_size, "_".join(str(h) for h in hidden), \
-                str(learning_rate), "_".join(str(p) for p in dropout_prob) )
+model_dir = '../model/%s_%s_%s_nn%s_%s_lr%s_decay%s_drop%s' \
+              %(feature, label_type, data_size, "_".join(str(h) for h in hidden), activation, \
+                str(learning_rate), str(lr_decay), "_".join(str(p) for p in dropout_prob) )
 
 # load model
 model_filename = os.path.join(model_dir, 'epoch%d.model'%epoch)
@@ -34,7 +36,7 @@ dnn = dnn_load_model(model_filename)
 
 
 # testing
-test_filename = '../feature/test.fbank'
+test_filename = '../feature/test.%s' %feature
 X_test = dnn_load_data(test_filename)
 
 output_filename = '../pred/%s.csv' %parameters
