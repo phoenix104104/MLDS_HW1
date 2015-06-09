@@ -3,6 +3,10 @@ import mapping
 import csv
 from pickle import dump, load
 
+class OPTS:
+    def __init__(self):
+        self.epoch = 0
+
 def report_time(ts, te):
     D = 24 * 60 * 60
     H = 60 * 60
@@ -106,6 +110,18 @@ def dnn_save_label(frame_filename, output_filename, predict_index, label_type):
 
     return predict_label
     
+
+def dnn_save_feature(output_filename, feature, frame):
+    
+    N = len(frame)
+    with open(output_filename, 'w') as f:
+        print "Save %s" %output_filename
+        for i in range(N):
+            f.write("%s " %frame[i])
+            f.write(" ".join("%.8f" %x for x in feature[i]))
+            f.write("\n")
+
+
 
 def downcast_48_to_39(label_list):
     D = mapping.dict_48_39

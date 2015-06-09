@@ -19,12 +19,12 @@ def make_frame(frame_str, index):
     return frame
 
 
-fm = 3  # number of frame to merge
+fm = 4  # number of frame to merge
 
 
 feature_name = 'fbank'
 
-for t in ['train', 'test']:
+for t in ['test']:
     feature_filename = '../feature/%s.%s' %(t, feature_name)
     X = dnn_load_data(feature_filename) 
 

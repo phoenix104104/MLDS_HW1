@@ -5,6 +5,7 @@ import numpy as np
 import sys, os
 from pickle import dump, load
 
+srng = MRG_RandomStreams()
 
 def floatX(X):
     return np.asarray(X, dtype=theano.config.floatX)
@@ -15,15 +16,20 @@ def random_init(shape):
 def random_init_bias(shape):
     return theano.shared(floatX(np.random.randn(*shape) * 0.01),broadcastable=[True, False])
 
+def zero_init(shape):
+    return theano.shared(floatX(np.zeros(shape)))
+
+
 def sigmoid(X):
-    # TODO
     return (T.exp(X)/(T.exp(X)+1))
 
 def tanh(X):
     return T.tanh(X)
 
+def ReLU(X):
+    return T.maximum(X, 0.0)
+
 def softmax():
-    # TODO
     pass
 
 def cross_entropy():
@@ -35,87 +41,140 @@ def cost_func(X,Y):
     x_exp = T.exp(X)
     return T.mean(T.log(T.sum(x_exp, axis=1)) - T.sum(X*Y, axis=1))
 
-def sgd(cost, params, lr):
-    grads = T.grad(cost=cost, wrt=params)
+def sgd(cost, W, lr, opts):
+
+    w_reg   = 1 - opts.weight_decay * lr;
+    mu      = opts.momentum
+     
+    grads = T.grad(cost=cost, wrt=W)
     updates = []
-    for p, g in zip(params, grads):
-        updates.append([p, p - g * lr])
+    for w, g in zip(W, grads):
+        w_m = theano.shared(w.get_value()*0.0, broadcastable=w.broadcastable) # initialize momentum
+        #updates.append([w, w_reg * w - g * lr]) # original sgd
+        updates.append([w_m, mu * w_m - lr * g])
+        updates.append([w, w_reg * w + w_m])
+
     return updates
 
-def rectify(X):
-    return T.maximum(X, 0.0)
+def RMSProp(cost, W, lr, opts):
+    
+    eps = 1e-6
+    w_reg = 1 - opts.weight_decay * lr;
+    alpha = opts.rmsprop_alpha
 
-def dropout(X, drop_prob=0.0):
+    grads = T.grad(cost=cost, wrt=W)
+    updates = []
+    for w, g in zip(W, grads):
+        w_acc = theano.shared(w.get_value()*0.0, broadcastable=w.broadcastable)
+        w_acc_next = alpha * (w_acc) + (1 - alpha) * (g ** 2)
+        g_scaling = T.sqrt(w_acc_next + eps)
+        g = g / g_scaling
+        updates.append([w_acc, w_acc_next])
+        updates.append([w, w_reg * w - lr * g])
+
+    return updates
+
+
+def dropout(X, drop_prob=0.0, is_training=1):
 
     if( drop_prob > 0.0):
         retain_prob = 1 - drop_prob
-        X *= MRG_RandomStreams().binomial(X.shape, p=retain_prob, dtype=theano.config.floatX)
-        X /= retain_prob
+        if( is_training ):
+            mask = srng.binomial(n=1, size=X.shape, p=drop_prob)
+            X *= T.cast(mask, theano.config.floatX)
+            #X *= srng.binomial(X.shape, p=retain_prob, dtype=theano.config.floatX)
+            #X /= retain_prob
+        else:
+            X *= retain_prob
 
     return X
 
+def model(X, W, B, act, dropout_prob, is_training):
+    
+    layer_num = len(W)
+    H = [[]] * layer_num
+
+    hidden = dropout(X, dropout_prob, is_training)
+    for i in range(layer_num-1):
+        hidden = act(T.dot(hidden, W[i]) + B[i])
+        hidden = dropout(hidden, dropout_prob, is_training)
+        H[i] = hidden
+       
+    # last layer
+    H[layer_num-1] = T.dot(hidden, W[layer_num-1]) + B[layer_num-1]
+
+    return H
+    
+
 class DNN:
-    def __init__(self, structure, learning_rate=0.05, batch_size=100, act='sigmoid', dropout_prob=[0.0, 0.0], model_dir='../model'):
+    def __init__(self, opts):
+
         self.X = T.matrix(dtype=theano.config.floatX)
         self.Y = T.matrix(dtype=theano.config.floatX)
 
-        self.W = []
-        self.B = []
-        for i in range(len(structure)-1):
-            w = random_init((structure[i], structure[i+1]))
+        self.W  = []
+        self.B  = []
+        for i in range(len(opts.structure)-1):
+            w  = random_init((opts.structure[i], opts.structure[i+1]))
             self.W.append(w)
-        for i in range(1,len(structure)):
-            b = random_init_bias((1,structure[i]))
+
+        for i in range(1,len(opts.structure)):
+            b  = random_init_bias((1, opts.structure[i]))
             self.B.append(b)
+        
+        self.opts = opts
+        self.lr = theano.shared(np.cast[theano.config.floatX](opts.learning_rate))
 
-        self.structure = structure
-        self.lr = theano.shared(np.cast[theano.config.floatX](learning_rate))
-        self.batch_size = batch_size
-        self.input_drop_prob  = dropout_prob[0]
-        self.hidden_drop_prob = dropout_prob[1]
-        self.model_dir = model_dir
-
-        if(act == 'sigmoid'):
+        if(opts.activation == 'sigmoid'):
             self.act = sigmoid
-        elif(act == 'tanh'):
+        elif(opts.activation == 'tanh'):
             self.act = tanh
-        elif(act == 'ReLU'):
-            self.act = rectify
+        elif(opts.activation == 'ReLU'):
+            self.act = ReLU
         else:
-            print "Unknown activation %s" %act
+            print "Unknown activation %s" %opts.act
             sys.exit(1)
 
+
         # training model
-        hidden = dropout(self.X, self.input_drop_prob)
-        layer_num = len(self.W)
-        for i in range(layer_num-1):
-            hidden = self.act(T.dot(hidden, self.W[i]) + self.B[i])
-            hidden = dropout(hidden, self.hidden_drop_prob)
-       
-        self.model = T.dot(hidden, self.W[layer_num-1]) + self.B[layer_num-1]
+        self.H_train = model(self.X, self.W, self.B, self.act, self.opts.dropout_prob, 1)
+        self.H_test  = model(self.X, self.W, self.B, self.act, self.opts.dropout_prob, 0)
         
-        self.cost = cost_func(self.model, self.Y)
+        self.cost = cost_func(self.H_train[-1], self.Y)
 
-        self.updates = sgd(self.cost, self.W+self.B, self.lr)
+        if(opts.update_grad == 'sgd'):
+            self.updates = sgd(self.cost, self.W+self.B, self.lr, self.opts)
+        elif(opts.update_grad == 'rmsprop'):
+            self.updates = RMSProp(self.cost, self.W+self.B, self.lr, self.opts)
+        else:
+            print "Unknown gradient update method %s" %opts.update_grad
+            sys.exit(1)
 
-        self.y_pred = T.argmax(self.model, axis=1)
+        self.y_pred = T.argmax(self.H_test[-1], axis=1)
 
         self.train_batch = theano.function(inputs=[self.X, self.Y], outputs=self.cost, updates=self.updates, allow_input_downcast=True)
     
-        self.predict = theano.function(inputs=[self.X], outputs=self.y_pred, allow_input_downcast=True)
+        self.predict_batch = theano.function(inputs=[self.X], outputs=self.y_pred, allow_input_downcast=True)
         
-        print "NN structure: %s" %("-".join(str(s) for s in structure))
-        print "Initial learning rate = %s" %(str(learning_rate))
-        print "Activation function = %s" %act
-        print "Dropout probability = (%s, %s)" %(str(dropout_prob[0]), str(dropout_prob[1]))
+        print "================================================"
+        print "NN structure \t\t= %s" %("-".join(str(s) for s in opts.structure))
+        print "Batch size \t\t= %s" %(str(opts.batch_size))
+        print "Initial learning rate \t= %s" %(str(opts.learning_rate))
+        print "Momentum \t\t= %s" %(opts.momentum)
+        print "Weight decay \t\t= %s" %(opts.weight_decay)
+        print "RMSProp alpha \t\t= %s" %(opts.rmsprop_alpha)
+        print "Dropout probability \t= %s" %(str(opts.dropout_prob))
+        print "Activation function \t= %s" %(opts.activation)
+        print "Gradient update \t= %s" %(opts.update_grad)
+        print "================================================"
 
-    def train(self, X_train, Y_train, learning_rate):
+    def train(self, X_train, Y_train, batch_size, learning_rate):
         
         self.set_learning_rate(learning_rate)        
-        starts = range(0, len(X_train), self.batch_size)
-        ends = range(self.batch_size, len(X_train), self.batch_size) + [len(X_train)]
+        starts = range(0, len(X_train), batch_size)
+        ends = range(batch_size, len(X_train), batch_size) + [len(X_train)]
         randperm = np.random.permutation(len(X_train))
-
+        
         for start, end in zip(starts, ends): 
             X_round = []
             Y_round = []
@@ -129,15 +188,15 @@ class DNN:
     def set_learning_rate(self, learning_rate):
         self.lr.set_value(learning_rate)
 
-    def batch_predict(self, X, block_size=1000):
+    def predict(self, X, batch_size=1000):
         N = len(X)
-        starts = range(0, N, block_size)
-        ends   = range(block_size, N, block_size) + [N]
+        starts = range(0, N, batch_size)
+        ends   = range(batch_size, N, batch_size) + [N]
         
         pred_list = []
         for st, ed in zip(starts, ends):
             x = X[st:ed]
-            pred_list.append( self.predict(x) )
+            pred_list.append( self.predict_batch(x) )
 
         pred = np.concatenate(pred_list)
         return pred
