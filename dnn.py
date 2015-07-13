@@ -19,6 +19,11 @@ def random_init_bias(shape):
 def zero_init(shape):
     return theano.shared(floatX(np.zeros(shape)))
 
+def zero_init_bias(shape):
+    return theano.shared(floatX(np.zeros(shape)),broadcastable=[True, False])
+
+def init_from_pretrain(W):
+    return theano.shared(floatX(W))
 
 def sigmoid(X):
     return (T.exp(X)/(T.exp(X)+1))
@@ -51,8 +56,10 @@ def sgd(cost, W, lr, opts):
     for w, g in zip(W, grads):
         w_m = theano.shared(w.get_value()*0.0, broadcastable=w.broadcastable) # initialize momentum
         #updates.append([w, w_reg * w - g * lr]) # original sgd
-        updates.append([w_m, mu * w_m - lr * g])
-        updates.append([w, w_reg * w + w_m])
+        #updates.append([w_m, mu * w_m - lr * g])
+        #updates.append([w, w_reg * w + w_m])
+        updates.append([w, w_reg * w - lr * w_m])
+        updates.append([w_m, mu * w_m + (1 - mu) * g])
 
     return updates
 
@@ -114,13 +121,21 @@ class DNN:
 
         self.W  = []
         self.B  = []
+        #self.mW = []
+        #self.mB = []
         for i in range(len(opts.structure)-1):
-            w  = random_init((opts.structure[i], opts.structure[i+1]))
+            if( opts.pretrain ):
+                w = init_from_pretrain(opts.W_init[i])
+            else:
+                w = random_init((opts.structure[i], opts.structure[i+1]))
+            
             self.W.append(w)
+            #self.mW.append(zero_init(w.shape))
 
         for i in range(1,len(opts.structure)):
-            b  = random_init_bias((1, opts.structure[i]))
+            b = random_init_bias((1, opts.structure[i]))
             self.B.append(b)
+            #self.mB.append(zero_init_bias(b))
         
         self.opts = opts
         self.lr = theano.shared(np.cast[theano.config.floatX](opts.learning_rate))
@@ -140,6 +155,11 @@ class DNN:
         self.H_train = model(self.X, self.W, self.B, self.act, self.opts.dropout_prob, 1)
         self.H_test  = model(self.X, self.W, self.B, self.act, self.opts.dropout_prob, 0)
         
+        self.hidden = []
+        for h in self.H_test:
+            self.hidden.append(theano.function(inputs=[self.X], outputs=h, allow_input_downcast=True))
+
+
         self.cost = cost_func(self.H_train[-1], self.Y)
 
         if(opts.update_grad == 'sgd'):
@@ -166,6 +186,7 @@ class DNN:
         print "Dropout probability \t= %s" %(str(opts.dropout_prob))
         print "Activation function \t= %s" %(opts.activation)
         print "Gradient update \t= %s" %(opts.update_grad)
+        print "RBM pretraining \t= %s" %(opts.pretrain)
         print "================================================"
 
     def train(self, X_train, Y_train, batch_size, learning_rate):
@@ -200,5 +221,19 @@ class DNN:
 
         pred = np.concatenate(pred_list)
         return pred
+
+    def get_hidden_feature(self, X, l, batch_size=1000):
+        N = len(X)
+        starts = range(0, N, batch_size)
+        ends   = range(batch_size, N, batch_size) + [N]
+        
+        output = []
+        for st, ed in zip(starts, ends):
+            x = X[st:ed]
+            output.append( self.hidden[l-1](x) )
+
+        output = np.concatenate(output)
+        
+        return output
 
     

@@ -10,7 +10,7 @@ filename = 'valid1M.list'
 print "Load %s" %filename
 valid_index = np.loadtxt(filename, dtype='int')
 
-for fv in ['fbank3', 'fbank4']:
+for fv in ['fbank5.norm']:
 
     train_filename = '../feature/train.%s' %fv
     print "Load %s" %train_filename

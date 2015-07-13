@@ -10,6 +10,7 @@ import time, sys, os
 
 sys.setrecursionlimit(9999) # to dump large network
 #---------- training script ----------#
+epoch_start = 700
 
 opts = OPTS()
 opts.epoch          = 1000
@@ -55,16 +56,6 @@ if( opts.pretrain ):
     parameters += '_RBMpretrain'
 
 
-opts.model_dir = '../model/%s' %parameters
-print "Save model at %s" %opts.model_dir
-
-if( os.path.isdir(opts.model_dir) ):
-    print "Warning! Directory %s already exists!\n" %opts.model_dir
-    print ">>>>> ctrl+c to leave the program, or press any key to continue..."
-    raw_input()
-else:
-    print "mkdir %s" %opts.model_dir
-    os.mkdir(opts.model_dir)
 
 if( opts.data_size == 'all' ):
     train_filename = '../feature/train.%s' %(opts.feature)
@@ -106,8 +97,9 @@ if( opts.pretrain ):
     opts.W_init = W_init
 
 
-print "Build DNN structure..."
-dnn = DNN(opts)
+opts.model_dir = '../model/%s' %parameters
+model_filename = os.path.join(opts.model_dir, 'epoch%d.model'%epoch_start)
+dnn = dnn_load_model(model_filename)
 
 
 # training
@@ -116,7 +108,7 @@ print "Start DNN training...(lr_decay = %s)" %(str(opts.lr_decay))
 acc_all = []
 lr = opts.learning_rate
 ts = time.time()
-for i in range(opts.epoch):
+for i in range(epoch_start, opts.epoch):
 
     dnn.train(X_train, Y_train, opts.batch_size, lr)
 
@@ -149,10 +141,6 @@ log_filename = '../log/%s.log' %parameters
 print "Save %s" %log_filename
 np.savetxt(log_filename, acc_all, fmt='%.7f')
 
-
-#fv = dnn.get_hidden_feature(X_valid, 1)
-#fv = dnn.get_hidden_feature(X_valid, 2)
-#fv = dnn.get_hidden_feature(X_valid, 3)
 
 # clear X_train, X_valid
 X_train = []
